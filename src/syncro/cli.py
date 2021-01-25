@@ -6,7 +6,9 @@ class Deco:
     def __init__(self, *args, **kwargs):
         self.arguments = args, kwargs
         if len(args) == 1 and callable(args[0]) and not kwargs:
-            self.fn = self.wrapper(None, args[0]) or args[0]
+            self.fn = self.wrapper(args[0]) or args[0]
+            self.__name__ = args[0].__name__
+            self.__doc__ = args[0].__doc__
         else:
             self.fn = None
 
@@ -21,10 +23,11 @@ class Deco:
         result = self.fn(*args, **kwargs)
         return self.after(self.arguments, self.fn, result)
 
-    def wrapper(self, arguments, fn):
-        print(f"init {arguments=} {fn=}")
-        fn = click.option("-v", "--verbose=", count=True)
-        fn = click.option("-q", "--quiet=", count=True)
+    def wrapper(self, fn):
+        print(f"wrapper {arguments=} {fn=}")
+        fn1 = click.option("-v", "--verbose", count=True)(fn)
+        fn1 = click.option("-q", "--quiet", count=True)(fn1)
+        return functools.wraps(fn)(fn1)
 
     def before(self, arguments, fn, *args, **kwargs):
         print(f"before {arguments=} {fn=} {args=} {kwargs=}")
