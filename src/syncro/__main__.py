@@ -66,11 +66,13 @@ def hello():
     pass
 
 @click.command()
-@cli.Deco #(1, b=2)
+@cli.cli(quiet=True)
 def one(*args, **kwargs):
     "hello world"
+    logger.debug("A")
+    logger.info("B")
+    logger.warning("C")
     print("one", args, kwargs)
-    pass
 
 # @cli.add_logging()
 # def two(*args, **kwargs):

@@ -1,37 +1,50 @@
 import click
 import functools
+import logging
 
 
-class Deco:
-    def __init__(self, *args, **kwargs):
-        self.arguments = args, kwargs
+class CliBase:
+    @classmethod
+    def cli(cls, *args, **kwargs):
         if len(args) == 1 and callable(args[0]) and not kwargs:
-            self.fn = self.wrapper(args[0]) or args[0]
-            self.__name__ = args[0].__name__
-            self.__doc__ = args[0].__doc__
+            return functools.wraps(args[0])(cls()._set(args[0]))
         else:
-            self.fn = None
+            def _fn(fn):
+                return cls((args, kwargs))._set(fn)
+            return _fn
+
+    def __init__(self, arguments=None):
+        self.arguments = arguments
+
+    def _set(self, fn):
+        self.fn = fn
+        return functools.wraps(fn)(self.wrapper() or self)
 
     def __call__(self, *args, **kwargs):
-        if not self.fn:
-            if len(args) == 1 and callable(args[0]) and not kwargs:
-                deco = Deco(args[0])
-                deco.arguments = self.arguments
-                return deco
-            raise RuntimeError("invalid decorator call")
-        self.before(self.arguments, self.fn, *args, **kwargs)
+        args, kwargs = self.before(self.arguments, self.fn, *args, **kwargs) or (args, kwargs)
         result = self.fn(*args, **kwargs)
-        return self.after(self.arguments, self.fn, result)
 
-    def wrapper(self, fn):
-        print(f"wrapper {arguments=} {fn=}")
-        fn1 = click.option("-v", "--verbose", count=True)(fn)
-        fn1 = click.option("-q", "--quiet", count=True)(fn1)
-        return functools.wraps(fn)(fn1)
+    def wrapper(self):
+        pass
 
     def before(self, arguments, fn, *args, **kwargs):
-        print(f"before {arguments=} {fn=} {args=} {kwargs=}")
+        pass
 
-    def after(self, arguments, fn, result):
-        print(f"after {arguments=} {fn=} {result=}")
 
+class Cli(CliBase):
+    def wrapper(self):
+        fn1 = click.option("-v", "--verbose", count=True)(self)
+        fn1 = click.option("-q", "--quiet", count=True)(fn1)
+        return fn1
+
+    def before(self, arguments, fn, *args, **kwargs):
+        level = kwargs.pop("verbose") - kwargs.pop("quiet")
+        arguments = arguments or ((), {})
+        if arguments[1].get("quiet", False):
+            level -= 1
+        level = logging.INFO if level == 0 else (logging.DEBUG if level > 0 else logging.WARN)
+        logging.basicConfig(level=level)
+        return args, kwargs
+
+
+cli = Cli.cli
