@@ -5,7 +5,7 @@ import logging
 
 class CliBase:
     @classmethod
-    def cli(cls, *args, **kwargs):
+    def decorator(cls, *args, **kwargs):
         if len(args) == 1 and callable(args[0]) and not kwargs:
             return functools.wraps(args[0])(cls()._set(args[0]))
         else:
@@ -47,4 +47,4 @@ class Cli(CliBase):
         return args, kwargs
 
 
-cli = Cli.cli
+standard = Cli.decorator

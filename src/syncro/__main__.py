@@ -1,5 +1,6 @@
 """starts a sync remote server
 """
+import os
 import getpass
 import pathlib
 import logging
@@ -32,14 +33,8 @@ def main(options):
     host, port, username = options.host, 22, options.username
     startup_delay_s = 2
 
-    client = paramiko.client.SSHClient()
-    client.load_system_host_keys()
-    client.load_host_keys(pathlib.Path("~/.ssh/known_hosts").expanduser())
-    client.connect(host, port, username=username, password=options.password)
 
 
-    transport = client.get_transport()
-    transport.set_keepalive(2)
 
     print(support.remote(transport, ["ls", "-la",])[1])
     #print(support.remote(transport, ["/bin/echo", "$$",]))
@@ -53,26 +48,28 @@ def main(options):
     # connect the secure end points
     support.shell(transport)
 
-@click.group()
-@click.option("--hello")
-def main(hello):
-    print(hello)
-
-
-@main.command()
-def hello():
-
-
-    pass
 
 @click.command()
-@cli.cli(quiet=True)
-def one(*args, **kwargs):
+@click.argument("host")
+@click.option('--password', hide_input=True)
+@click.option('--username', default=lambda: getpass.getuser())
+@cli.standard(quiet=True)
+def main(host, username, password):
     "hello world"
     logger.debug("A")
     logger.info("B")
     logger.warning("C")
-    print("one", args, kwargs)
+    port = 22
+    print("one", username, password)
+    client = paramiko.client.SSHClient()
+    client.load_system_host_keys()
+    client.load_host_keys(pathlib.Path("~/.ssh/known_hosts").expanduser())
+    client.connect(host, port, username=username, password=password)
+
+    transport = client.get_transport()
+    transport.set_keepalive(2)
+
+    print(support.remote(transport, ["ls", "-la",])[1])
 
 # @cli.add_logging()
 # def two(*args, **kwargs):
@@ -83,7 +80,4 @@ def one(*args, **kwargs):
 #     print("three", args, kwargs)
 
 if __name__ == '__main__':
-    #main()
-    pass
-
-    one()
+    main()
